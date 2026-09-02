@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zonas Rojas de Patrullaje - Maipú</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+  <style>
+    :root {
+      --azul: #252C54;
+      --magenta: #E60380;
+      --celeste: #31CCEC;
+      --amarillo: #FFB71B;
+      --gris: #f5f6fa;
+      --borde: #d7d9e2;
+      --texto: #222;
+      --verde: #0f8b4c;
+      --rojo: #c62828;
+      --rojo-oscuro: #7f0000;
+      --naranjo: #ef6c00;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--gris);
+      color: var(--texto);
+    }
+
+    header {
+      background: var(--azul);
+      color: white;
+      padding: 18px 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 14px;
+      opacity: 0.92;
+      max-width: 1000px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px 0;
+      background: var(--gris);
+    }
+
+    .tab-btn {
+      border: 1px solid var(--borde);
+      background: white;
+      color: var(--azul);
+      padding: 11px 16px;
+      border-radius: 12px 12px 0 0;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--azul);
+      color: white;
+      border-color: var(--azul);
+    }
+
+    main { padding: 16px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 16px;
+      min-height: calc(100vh - 150px);
+    }
+
+    .panel, .mapa-panel, .tabla-panel {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--borde);
+    }
+
+    .panel {
+      padding: 16px;
+      overflow-y: auto;
+      max-height: calc(100vh - 170px);
+    }
+
+    .panel h2, .tabla-panel h2 {
+      font-size: 17px;
+      margin: 0 0 12px;
+      color: var(--azul);
+    }
+
+    .subtitulo {
+      margin: 20px 0 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--borde);
+      font-size: 15px;
+      color: var(--azul);
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      margin: 12px 0 5px;
+      color: var(--azul);
+    }
+
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid var(--borde);
+      border-radius: 9px;
+      padding: 9px 10px;
+      font-size: 14px;
+      background: white;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .fila-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .contador {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #eef8fb;
+      border-left: 5px solid var(--celeste);
+      font-size: 14px;
+    }
+
+    .estado {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .estado.ok {
+      display: block;
+      background: #e9f8f0;
+      border-left: 5px solid var(--verde);
+    }
+
+    .estado.error {
+      display: block;
+      background: #fdecef;
+      border-left: 5px solid var(--magenta);
+    }
+
+    .estado.info {
+      display: block;
+      background: #eef8fb;
+      border-left: 5px solid var(--celeste);
+    }
+
+    .botones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-secundario { background: var(--azul); color: white; }
+    .btn-alerta { background: var(--amarillo); color: #222; }
+    .btn-gris { background: #e8e9ef; color: #222; }
+    .btn-verde { background: var(--verde); color: white; }
+    .btn-rojo { background: var(--rojo); color: white; }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .mapa-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .buscador-mapa {
+      display: grid;
+      grid-template-columns: 1fr 120px;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--borde);
+      background: #fff;
+    }
+
+    #mapRegistro, #mapRevision {
+      min-height: 610px;
+      width: 100%;
+    }
+
+    .ayuda-mapa {
+      padding: 10px 14px;
+      font-size: 13px;
+      border-top: 1px solid var(--borde);
+      background: #fff;
+      line-height: 1.4;
+    }
+
+    .tabla-panel {
+      margin-top: 16px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--azul);
+      color: white;
+      padding: 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    td {
+      border-bottom: 1px solid var(--borde);
+      padding: 8px;
+      vertical-align: top;
+    }
+
+    .fila-vacia {
+      text-align: center;
+      color: #666;
+      padding: 18px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--magenta);
+      color: white;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .badge-consenso {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      background: var(--rojo);
+    }
+
+    .nota {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+      margin-top: 10px;
+    }
+
+    .zona-card {
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 10px;
+      background: #fafafa;
+    }
+
+    .zona-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .zona-card-header strong { color: var(--azul); }
+
+    .mini-btn {
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .resumen-card {
+      background: #f7f8fb;
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .resumen-card small {
+      display: block;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .resumen-card strong {
+      font-size: 20px;
+      color: var(--azul);
+    }
+
+    .leyenda {
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      margin-top: 12px;
+      padding: 10px;
+      font-size: 12px;
+      background: white;
+    }
+
+    .leyenda-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 5px 0;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,.15);
+      flex: 0 0 auto;
+    }
+
+    .modal-guardando {
+      position: fixed;
+      inset: 0;
+      background: rgba(37, 44, 84, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-guardando.activo { display: flex; }
+
+    .modal-contenido {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: min(390px, 90vw);
+      text-align: center;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border: 5px solid #e8e9ef;
+      border-top: 5px solid var(--magenta);
+      border-radius: 50%;
+      margin: 0 auto 14px;
+      animation: girar 0.9s linear infinite;
+    }
+
+    @keyframes girar { to { transform: rotate(360deg); } }
+
+    .modal-contenido h3 {
+      margin: 0 0 8px;
+      color: var(--azul);
+    }
+
+    .modal-contenido p {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { max-height: none; }
+      #mapRegistro, #mapRevision { min-height: 460px; }
+      .tabs { flex-direction: column; }
+      .tab-btn { border-radius: 12px; }
+      .buscador-mapa { grid-template-columns: 1fr; }
+      .fila-2, .resumen-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Zonas Rojas de Patrullaje - Maipú</h1>
+    <p>
+      Formulario georreferenciado para registrar múltiples polígonos señalados por patrulleros/as y visualizar las áreas donde existen coincidencias entre distintos funcionarios.
+    </p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="registrar">Registrar zonas rojas</button>
+    <button class="tab-btn" data-tab="revisar">Revisar coincidencias</button>
+  </nav>
+
+  <main>
+    <section id="registrar" class="tab-content active">
+      <div class="layout">
+        <section class="panel">
+          <h2>1. Datos de la entrevista</h2>
+
+          <label for="entrevistador">Entrevistador/a *</label>
+          <input id="entrevistador" type="text" placeholder="Ej.: Antonia Bravo" />
+
+          <label for="patrullero">Patrullero/a entrevistado/a *</label>
+          <input id="patrullero" type="text" placeholder="Nombre y apellido" />
+
+          <div class="fila-2">
+            <div>
+              <label for="equipo">Equipo / unidad</label>
+              <input id="equipo" type="text" placeholder="Ej.: Equipo 2" />
+            </div>
+            <div>
+              <label for="turno">Turno</label>
+              <select id="turno">
+                <option value="">Seleccione</option>
+                <option>Turno 1</option>
+                <option>Turno 2</option>
+                <option>Turno 3</option>
+                <option>Administrativo / otro</option>
+              </select>
+            </div>
+          </div>
+
+          <label for="observacionGeneral">Observación general</label>
+          <textarea id="observacionGeneral" placeholder="Antecedentes generales entregados por el patrullero/a."></textarea>
+
+          <h3 class="subtitulo">2. Zonas dibujadas</h3>
+
+          <div class="contador">
+            Polígonos en esta respuesta: <strong id="contadorPendientes">0</strong>
+          </div>
+
+          <div id="listaZonasPendientes"></div>
+
+          <div class="botones">
+            <button class="btn-gris" id="btnLimpiarZonas">Limpiar zonas</button>
+            <button class="btn-secundario" id="btnCentrarRegistro">Centrar Maipú</button>
+            <button class="btn-verde" id="btnGuardarRespuesta">Guardar respuesta</button>
+            <button class="btn-alerta" id="btnNuevaRespuesta">Nueva respuesta</button>
+          </div>
+
+          <div id="estadoRegistro" class="estado"></div>
+
+          <p class="nota">
+            Use el ícono de polígono del mapa. Puede dibujar varias zonas para una misma entrevista. Después puede editar sus vértices con la herramienta de edición antes de guardar.
+          </p>
+        </section>
+
+        <section class="mapa-panel">
+          <div class="buscador-mapa">
+            <input id="direccionRegistro" type="text" placeholder="Buscar dirección o intersección en Maipú" />
+            <button class="btn-secundario" id="btnBuscarRegistro">Buscar</button>
+          </div>
+
+          <div id="mapRegistro"></div>
+
+          <div class="ayuda-mapa">
+            <strong>Cómo marcar:</strong> presione el ícono de polígono, haga clic en los vértices de la zona roja y cierre la figura haciendo clic en el primer vértice. Repita para agregar más zonas a la misma respuesta.
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="revisar" class="tab-content">
+      <div class="layout">
+        <section class="panel">
+          <h2>Filtros de revisión</h2>
+
+          <label for="filtroPatrullero">Patrullero/a</label>
+          <select id="filtroPatrullero">
+            <option value="">Todos</option>
+          </select>
+
+          <div class="fila-2">
+            <div>
+              <label for="filtroEquipo">Equipo</label>
+              <select id="filtroEquipo">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filtroTurno">Turno</label>
+              <select id="filtroTurno">
+                <option value="">Todos</option>
+              </select>
+            </div>
+          </div>
+
+          <label for="filtroMotivo">Motivo</label>
+          <select id="filtroMotivo">
+            <option value="">Todos</option>
+          </select>
+
+          <div class="resumen-grid">
+            <div class="resumen-card">
+              <small>Zonas visibles</small>
+              <strong id="resumenZonas">0</strong>
+            </div>
+            <div class="resumen-card">
+              <small>Patrulleros</small>
+              <strong id="resumenPatrulleros">0</strong>
+            </div>
+            <div class="resumen-card">
+              <small>Zonas con coincidencia</small>
+              <strong id="resumenZonasCoincidentes">0</strong>
+            </div>
+            <div class="resumen-card">
+              <small>Intersecciones</small>
+              <strong id="resumenIntersecciones">0</strong>
+            </div>
+          </div>
+
+          <div class="botones">
+            <button class="btn-secundario" id="btnActualizarRevision">Actualizar</button>
+            <button class="btn-gris" id="btnCentrarRevision">Centrar Maipú</button>
+            <button class="btn-rojo" id="btnToggleCoincidencias">Ocultar coincidencias</button>
+            <button class="btn-verde" id="btnDescargarGeoJSON">Descargar GeoJSON</button>
+          </div>
+
+          <div class="leyenda">
+            <strong>Leyenda de consenso</strong>
+            <div class="leyenda-item"><span class="swatch" style="background:#ef9a9a"></span> 1 patrullero: sin coincidencia</div>
+            <div class="leyenda-item"><span class="swatch" style="background:#ff7043"></span> 2 patrulleros coinciden</div>
+            <div class="leyenda-item"><span class="swatch" style="background:#d32f2f"></span> 3 patrulleros coinciden</div>
+            <div class="leyenda-item"><span class="swatch" style="background:#7f0000"></span> 4 o más patrulleros coinciden</div>
+            <div class="leyenda-item"><span class="swatch" style="background:#e60380"></span> Área exacta de intersección</div>
+          </div>
+
+          <div id="estadoRevision" class="estado"></div>
+
+          <p class="nota">
+            Una coincidencia se contabiliza cuando dos zonas de <strong>patrulleros distintos</strong> tienen una intersección de al menos 25 m² y esa intersección representa al menos 5% de la zona más pequeña. Esto evita contar roces mínimos entre polígonos.
+          </p>
+        </section>
+
+        <section class="mapa-panel">
+          <div class="buscador-mapa">
+            <input id="direccionRevision" type="text" placeholder="Buscar dirección o intersección en Maipú" />
+            <button class="btn-secundario" id="btnBuscarRevision">Buscar</button>
+          </div>
+
+          <div id="mapRevision"></div>
+
+          <div class="ayuda-mapa">
+            Las zonas se oscurecen a medida que más patrulleros distintos señalan áreas superpuestas. Las figuras magenta corresponden a las intersecciones geométricas detectadas.
+          </div>
+        </section>
+      </div>
+
+      <section class="tabla-panel">
+        <h2>Zonas registradas</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID zona</th>
+              <th>Fecha</th>
+              <th>Patrullero/a</th>
+              <th>Equipo</th>
+              <th>Turno</th>
+              <th>Motivo</th>
+              <th>Área m²</th>
+              <th>Patrulleros coincidentes</th>
+              <th>Coincide con</th>
+            </tr>
+          </thead>
+          <tbody id="tablaZonasRegistradas">
+            <tr><td class="fila-vacia" colspan="9">Aún no hay datos cargados.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="tabla-panel">
+        <h2>Detalle de intersecciones detectadas</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Patrullero A</th>
+              <th>Patrullero B</th>
+              <th>Zona A</th>
+              <th>Zona B</th>
+              <th>Área compartida m²</th>
+              <th>% sobre zona menor</th>
+            </tr>
+          </thead>
+          <tbody id="tablaCoincidencias">
+            <tr><td class="fila-vacia" colspan="6">No hay coincidencias calculadas.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+
+  <div id="modalGuardando" class="modal-guardando">
+    <div class="modal-contenido">
+      <div class="spinner"></div>
+      <h3>Guardando respuesta</h3>
+      <p>Se están registrando la entrevista y sus polígonos.</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <script>
+    // =========================================================
+    // 1. CONFIGURACIÓN
+    // =========================================================
+
+    // Pegue aquí la URL /exec de la NUEVA implementación de Apps Script.
+    const SCRIPT_URL = "PEGA_AQUI_LA_URL_DEL_NUEVO_APPS_SCRIPT";
+
+    const CENTRO_MAIPU = [-33.5102, -70.7565];
+    const ZOOM_MAIPU = 13;
+
+    // Parámetros de coincidencia. Se pueden ajustar después de probar con datos reales.
+    const MIN_OVERLAP_M2 = 25;
+    const MIN_OVERLAP_PCT = 0.05;
+
+    const MOTIVOS = [
+      "Alta conflictividad / reiteración de procedimientos",
+      "Robos / delitos contra la propiedad",
+      "Riñas / amenazas / violencia",
+      "Consumo de alcohol y/o drogas",
+      "Armas / disparos",
+      "Incivilidades",
+      "Condiciones físicas / baja visibilidad",
+      "Otro"
+    ];
+
+    // =========================================================
+    // 2. ESTADO GENERAL
+    // =========================================================
+
+    let zonasPendientes = [];
+    let zonasRegistradas = [];
+    let coincidenciasActuales = [];
+    let resumenCoincidenciasPorZona = new Map();
+
+    let markerBusquedaRegistro = null;
+    let markerBusquedaRevision = null;
+    let coincidenciasVisibles = true;
+
+    const capasPendientesPorId = new Map();
+
+    // =========================================================
+    // 3. MAPAS
+    // =========================================================
+
+    const mapRegistro = L.map("mapRegistro", { preferCanvas: true }).setView(CENTRO_MAIPU, ZOOM_MAIPU);
+    const mapRevision = L.map("mapRevision", { preferCanvas: true }).setView(CENTRO_MAIPU, ZOOM_MAIPU);
+
+    [mapRegistro, mapRevision].forEach(map => {
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+    });
+
+    const drawnItems = new L.FeatureGroup();
+    drawnItems.addTo(mapRegistro);
+
+    const zonasRevisionLayer = L.layerGroup().addTo(mapRevision);
+    const coincidenciasLayer = L.layerGroup().addTo(mapRevision);
+
+    const drawControl = new L.Control.Draw({
+      position: "topleft",
+      draw: {
+        polygon: {
+          allowIntersection: false,
+          showArea: true,
+          shapeOptions: {
+            color: "#c62828",
+            weight: 3,
+            fillColor: "#ef5350",
+            fillOpacity: 0.25
+          }
+        },
+        polyline: false,
+        rectangle: false,
+        circle: false,
+        circlemarker: false,
+        marker: false
+      },
+      edit: {
+        featureGroup: drawnItems,
+        edit: true,
+        remove: true
+      }
+    });
+
+    mapRegistro.addControl(drawControl);
+
+    // =========================================================
+    // 4. REFERENCIAS DOM
+    // =========================================================
+
+    const entrevistadorEl = document.getElementById("entrevistador");
+    const patrulleroEl = document.getElementById("patrullero");
+    const equipoEl = document.getElementById("equipo");
+    const turnoEl = document.getElementById("turno");
+    const observacionGeneralEl = document.getElementById("observacionGeneral");
+    const contadorPendientesEl = document.getElementById("contadorPendientes");
+    const listaZonasPendientesEl = document.getElementById("listaZonasPendientes");
+    const estadoRegistroEl = document.getElementById("estadoRegistro");
+
+    const filtroPatrulleroEl = document.getElementById("filtroPatrullero");
+    const filtroEquipoEl = document.getElementById("filtroEquipo");
+    const filtroTurnoEl = document.getElementById("filtroTurno");
+    const filtroMotivoEl = document.getElementById("filtroMotivo");
+    const estadoRevisionEl = document.getElementById("estadoRevision");
+
+    // =========================================================
+    // 5. INICIO
+    // =========================================================
+
+    async function iniciarApp() {
+      llenarSelect(filtroMotivoEl, MOTIVOS, "Todos");
+      await cargarZonasRegistradas();
+      inicializarFiltrosRevision();
+      renderPendientes();
+      renderRevision();
+    }
+
+    function scriptConfigurado() {
+      return SCRIPT_URL && !SCRIPT_URL.includes("PEGA_AQUI");
+    }
+
+    // =========================================================
+    // 6. DIBUJO Y EDICIÓN DE POLÍGONOS
+    // =========================================================
+
+    mapRegistro.on(L.Draw.Event.CREATED, event => {
+      const layer = event.layer;
+      drawnItems.addLayer(layer);
+      agregarZonaDesdeLayer(layer);
+    });
+
+    mapRegistro.on(L.Draw.Event.EDITED, event => {
+      event.layers.eachLayer(layer => {
+        const idLocal = layer.__idZonaLocal;
+        if (!idLocal) return;
+        actualizarZonaDesdeLayer(idLocal, layer);
+      });
+      renderPendientes();
+    });
+
+    mapRegistro.on(L.Draw.Event.DELETED, event => {
+      const idsEliminar = [];
+
+      event.layers.eachLayer(layer => {
+        if (layer.__idZonaLocal) idsEliminar.push(layer.__idZonaLocal);
+      });
+
+      idsEliminar.forEach(id => eliminarZonaPendiente(id, false));
+      renderPendientes();
+    });
+
+    function agregarZonaDesdeLayer(layer) {
+      const idLocal = generarIdLocal();
+      layer.__idZonaLocal = idLocal;
+      capasPendientesPorId.set(idLocal, layer);
+
+      const datosGeometricos = extraerDatosGeometricos(layer);
+
+      zonasPendientes.push({
+        id_local: idLocal,
+        motivo: MOTIVOS[0],
+        detalle_zona: "",
+        ...datosGeometricos
+      });
+
+      renderPendientes();
+    }
+
+    function actualizarZonaDesdeLayer(idLocal, layer) {
+      const idx = zonasPendientes.findIndex(z => z.id_local === idLocal);
+      if (idx === -1) return;
+
+      zonasPendientes[idx] = {
+        ...zonasPendientes[idx],
+        ...extraerDatosGeometricos(layer)
+      };
+    }
+
+    function extraerDatosGeometricos(layer) {
+      const feature = layer.toGeoJSON();
+      const geometry = feature.geometry;
+      const area = turf.area(feature);
+      const centroid = turf.centroid(feature).geometry.coordinates;
+      const bounds = layer.getBounds();
+
+      return {
+        geom_geojson: geometry,
+        area_m2: Math.round(area * 100) / 100,
+        centroide: {
+          lat: Number(centroid[1].toFixed(7)),
+          lon: Number(centroid[0].toFixed(7))
+        },
+        bbox: {
+          minLat: Number(bounds.getSouth().toFixed(7)),
+          minLon: Number(bounds.getWest().toFixed(7)),
+          maxLat: Number(bounds.getNorth().toFixed(7)),
+          maxLon: Number(bounds.getEast().toFixed(7))
+        }
+      };
+    }
+
+    function renderPendientes() {
+      contadorPendientesEl.textContent = zonasPendientes.length;
+
+      if (zonasPendientes.length === 0) {
+        listaZonasPendientesEl.innerHTML = '<p class="nota">Aún no hay zonas dibujadas.</p>';
+        return;
+      }
+
+      listaZonasPendientesEl.innerHTML = zonasPendientes.map((zona, index) => `
+        <div class="zona-card" data-id="${zona.id_local}">
+          <div class="zona-card-header">
+            <strong>Zona ${index + 1}</strong>
+            <button class="btn-rojo mini-btn" data-eliminar-zona="${zona.id_local}">Eliminar</button>
+          </div>
+
+          <div class="nota">Superficie aproximada: <strong>${formatearNumero(zona.area_m2)} m²</strong></div>
+
+          <label>Motivo principal</label>
+          <select data-motivo-zona="${zona.id_local}">
+            ${MOTIVOS.map(m => `<option value="${escaparHtmlAtributo(m)}" ${m === zona.motivo ? "selected" : ""}>${escaparHtml(m)}</option>`).join("")}
+          </select>
+
+          <label>Detalle de esta zona</label>
+          <textarea data-detalle-zona="${zona.id_local}" placeholder="Ej.: poca iluminación, robos reiterados, punto de consumo, riñas, etc.">${escaparHtml(zona.detalle_zona || "")}</textarea>
+        </div>
+      `).join("");
+
+      document.querySelectorAll("[data-eliminar-zona]").forEach(btn => {
+        btn.addEventListener("click", () => eliminarZonaPendiente(btn.dataset.eliminarZona, true));
+      });
+
+      document.querySelectorAll("[data-motivo-zona]").forEach(select => {
+        select.addEventListener("change", () => {
+          const zona = zonasPendientes.find(z => z.id_local === select.dataset.motivoZona);
+          if (zona) zona.motivo = select.value;
+        });
+      });
+
+      document.querySelectorAll("[data-detalle-zona]").forEach(textarea => {
+        textarea.addEventListener("input", () => {
+          const zona = zonasPendientes.find(z => z.id_local === textarea.dataset.detalleZona);
+          if (zona) zona.detalle_zona = textarea.value;
+        });
+      });
+    }
+
+    function eliminarZonaPendiente(idLocal, removerCapa = true) {
+      zonasPendientes = zonasPendientes.filter(z => z.id_local !== idLocal);
+
+      const layer = capasPendientesPorId.get(idLocal);
+      if (layer && removerCapa && drawnItems.hasLayer(layer)) {
+        drawnItems.removeLayer(layer);
+      }
+
+      capasPendientesPorId.delete(idLocal);
+      renderPendientes();
+    }
+
+    function limpiarZonasPendientes(confirmar = true) {
+      if (zonasPendientes.length === 0) return;
+      if (confirmar && !confirm("¿Eliminar todos los polígonos de esta respuesta?")) return;
+
+      drawnItems.clearLayers();
+      capasPendientesPorId.clear();
+      zonasPendientes = [];
+      renderPendientes();
+    }
+
+    // =========================================================
+    // 7. GUARDADO
+    // =========================================================
+
+    async function guardarRespuesta() {
+      const entrevistador = entrevistadorEl.value.trim();
+      const patrullero = patrulleroEl.value.trim();
+
+      if (!entrevistador) {
+        alert("Ingrese el nombre del entrevistador/a.");
+        entrevistadorEl.focus();
+        return;
+      }
+
+      if (!patrullero) {
+        alert("Ingrese el nombre del patrullero/a entrevistado/a.");
+        patrulleroEl.focus();
+        return;
+      }
+
+      if (zonasPendientes.length === 0) {
+        alert("Dibuje al menos una zona roja antes de guardar.");
+        return;
+      }
+
+      if (!scriptConfigurado()) {
+        mostrarEstado(estadoRegistroEl, "error", "Falta configurar SCRIPT_URL con la URL /exec de la nueva implementación de Apps Script.");
+        return;
+      }
+
+      const idRespuesta = generarIdRespuestaCliente();
+      const cantidadEsperada = zonasPendientes.length;
+
+      const payload = {
+        action: "guardar_respuesta",
+        id_respuesta: idRespuesta,
+        entrevistador,
+        patrullero,
+        equipo: equipoEl.value.trim(),
+        turno: turnoEl.value,
+        observacion_general: observacionGeneralEl.value.trim(),
+        zonas: zonasPendientes.map((zona, index) => ({
+          zona_numero: index + 1,
+          motivo: zona.motivo,
+          detalle_zona: zona.detalle_zona,
+          area_m2: zona.area_m2,
+          centroide: zona.centroide,
+          bbox: zona.bbox,
+          geom_geojson: zona.geom_geojson
+        }))
+      };
+
+      try {
+        abrirModal();
+        document.getElementById("btnGuardarRespuesta").disabled = true;
+        mostrarEstado(estadoRegistroEl, "info", `Enviando respuesta ${idRespuesta}...`);
+
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        await esperar(1600);
+        await cargarZonasRegistradas();
+
+        const guardadas = zonasRegistradas.filter(z => z.id_respuesta === idRespuesta);
+
+        if (guardadas.length >= cantidadEsperada) {
+          mostrarEstado(
+            estadoRegistroEl,
+            "ok",
+            `Respuesta guardada correctamente: ${guardadas.length} zona(s), ID ${idRespuesta}.`
+          );
+
+          limpiarZonasPendientes(false);
+          patrulleroEl.value = "";
+          equipoEl.value = "";
+          turnoEl.value = "";
+          observacionGeneralEl.value = "";
+
+          inicializarFiltrosRevision();
+          renderRevision();
+        } else {
+          mostrarEstado(
+            estadoRegistroEl,
+            "error",
+            `La solicitud fue enviada, pero todavía no pude verificar ${cantidadEsperada} zona(s) en la base. Use “Actualizar” en la pestaña de revisión antes de volver a guardar.`
+          );
+        }
+
+      } catch (error) {
+        mostrarEstado(
+          estadoRegistroEl,
+          "error",
+          "No se pudo enviar la respuesta. Revise la URL de Apps Script y la conexión."
+        );
+      } finally {
+        cerrarModal();
+        document.getElementById("btnGuardarRespuesta").disabled = false;
+      }
+    }
+
+    function nuevaRespuesta() {
+      if (zonasPendientes.length > 0 && !confirm("Hay zonas sin guardar. ¿Desea descartarlas y comenzar una nueva respuesta?")) return;
+
+      limpiarZonasPendientes(false);
+      patrulleroEl.value = "";
+      equipoEl.value = "";
+      turnoEl.value = "";
+      observacionGeneralEl.value = "";
+      mostrarEstado(estadoRegistroEl, "info", "Formulario listo para una nueva entrevista. Se mantiene el nombre del entrevistador/a.");
+    }
+
+    // =========================================================
+    // 8. COMUNICACIÓN CON APPS SCRIPT
+    // =========================================================
+
+    function jsonpRequest(mode) {
+      return new Promise((resolve, reject) => {
+        if (!scriptConfigurado()) {
+          reject(new Error("SCRIPT_URL no configurada"));
+          return;
+        }
+
+        const callbackName = "jsonp_zr_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+        const script = document.createElement("script");
+        const separador = SCRIPT_URL.includes("?") ? "&" : "?";
+
+        script.src = `${SCRIPT_URL}${separador}mode=${encodeURIComponent(mode)}&callback=${callbackName}&_=${Date.now()}`;
+
+        window[callbackName] = data => {
+          resolve(data);
+          delete window[callbackName];
+          script.remove();
+        };
+
+        script.onerror = () => {
+          reject(new Error("No se pudo conectar con Apps Script"));
+          delete window[callbackName];
+          script.remove();
+        };
+
+        document.body.appendChild(script);
+      });
+    }
+
+    async function cargarZonasRegistradas() {
+      if (!scriptConfigurado()) {
+        zonasRegistradas = [];
+        mostrarEstado(estadoRevisionEl, "info", "Pegue la URL de Apps Script en SCRIPT_URL para cargar la base real.");
+        return;
+      }
+
+      try {
+        mostrarEstado(estadoRevisionEl, "info", "Actualizando zonas registradas...");
+        const data = await jsonpRequest("zonas");
+        zonasRegistradas = normalizarZonas(data.zonas || []);
+        mostrarEstado(estadoRevisionEl, "ok", `Se cargaron ${zonasRegistradas.length} zona(s).`);
+      } catch (error) {
+        zonasRegistradas = [];
+        mostrarEstado(estadoRevisionEl, "error", "No se pudieron cargar las zonas desde Google Sheets.");
+      }
+    }
+
+    function normalizarZonas(lista) {
+      return lista.map(item => {
+        let geometry = null;
+
+        try {
+          geometry = typeof item.geom_geojson === "string"
+            ? JSON.parse(item.geom_geojson)
+            : item.geom_geojson;
+        } catch (error) {
+          geometry = null;
+        }
+
+        return {
+          ...item,
+          id_zona: String(item.id_zona || "").trim(),
+          id_respuesta: String(item.id_respuesta || "").trim(),
+          patrullero: String(item.patrullero || "").trim(),
+          patrullero_clave: String(item.patrullero_clave || normalizarPersona(item.patrullero)).trim(),
+          entrevistador: String(item.entrevistador || "").trim(),
+          equipo: String(item.equipo || "").trim(),
+          turno: String(item.turno || "").trim(),
+          motivo: String(item.motivo || "").trim(),
+          detalle_zona: String(item.detalle_zona || "").trim(),
+          area_m2: parseNumero(item.area_m2),
+          centroide_lat: parseNumero(item.centroide_lat),
+          centroide_lon: parseNumero(item.centroide_lon),
+          bbox_min_lat: parseNumero(item.bbox_min_lat),
+          bbox_min_lon: parseNumero(item.bbox_min_lon),
+          bbox_max_lat: parseNumero(item.bbox_max_lat),
+          bbox_max_lon: parseNumero(item.bbox_max_lon),
+          geom_geojson_obj: geometry
+        };
+      }).filter(z => z.id_zona && z.geom_geojson_obj);
+    }
+
+    // =========================================================
+    // 9. FILTROS Y COINCIDENCIAS
+    // =========================================================
+
+    function inicializarFiltrosRevision() {
+      llenarSelect(
+        filtroPatrulleroEl,
+        unicos(zonasRegistradas.map(z => z.patrullero)),
+        "Todos"
+      );
+
+      llenarSelect(
+        filtroEquipoEl,
+        unicos(zonasRegistradas.map(z => z.equipo)),
+        "Todos"
+      );
+
+      llenarSelect(
+        filtroTurnoEl,
+        unicos(zonasRegistradas.map(z => z.turno)),
+        "Todos"
+      );
+
+      const motivosPresentes = unicos([...MOTIVOS, ...zonasRegistradas.map(z => z.motivo)]);
+      llenarSelect(filtroMotivoEl, motivosPresentes, "Todos");
+    }
+
+    function obtenerZonasFiltradas() {
+      const patrullero = filtroPatrulleroEl.value;
+      const equipo = filtroEquipoEl.value;
+      const turno = filtroTurnoEl.value;
+      const motivo = filtroMotivoEl.value;
+
+      return zonasRegistradas.filter(z =>
+        (!patrullero || z.patrullero === patrullero) &&
+        (!equipo || z.equipo === equipo) &&
+        (!turno || z.turno === turno) &&
+        (!motivo || z.motivo === motivo)
+      );
+    }
+
+    function calcularCoincidencias(zonas) {
+      const resumen = new Map();
+      const intersecciones = [];
+
+      zonas.forEach(z => {
+        resumen.set(z.id_zona, {
+          patrulleros: new Set(z.patrullero ? [z.patrullero] : []),
+          otrosPatrulleros: new Set(),
+          otrasZonas: new Set(),
+          areaCompartidaM2: 0
+        });
+      });
+
+      for (let i = 0; i < zonas.length; i++) {
+        for (let j = i + 1; j < zonas.length; j++) {
+          const a = zonas[i];
+          const b = zonas[j];
+
+          const claveA = a.patrullero_clave || normalizarPersona(a.patrullero);
+          const claveB = b.patrullero_clave || normalizarPersona(b.patrullero);
+
+          // La coincidencia busca acuerdo ENTRE PERSONAS DISTINTAS.
+          if (!claveA || !claveB || claveA === claveB) continue;
+
+          if (!bboxSeCruza(a, b)) continue;
+
+          const featureA = turf.feature(a.geom_geojson_obj, { id_zona: a.id_zona });
+          const featureB = turf.feature(b.geom_geojson_obj, { id_zona: b.id_zona });
+
+          let inter = null;
+
+          try {
+            inter = turf.intersect(featureA, featureB);
+          } catch (error) {
+            inter = null;
+          }
+
+          if (!inter) continue;
+
+          const areaInter = turf.area(inter);
+          const areaA = a.area_m2 || turf.area(featureA);
+          const areaB = b.area_m2 || turf.area(featureB);
+          const areaMenor = Math.max(1, Math.min(areaA, areaB));
+          const pctMenor = areaInter / areaMenor;
+
+          if (areaInter < MIN_OVERLAP_M2 || pctMenor < MIN_OVERLAP_PCT) continue;
+
+          const ra = resumen.get(a.id_zona);
+          const rb = resumen.get(b.id_zona);
+
+          ra.otrosPatrulleros.add(b.patrullero);
+          ra.patrulleros.add(b.patrullero);
+          ra.otrasZonas.add(b.id_zona);
+          ra.areaCompartidaM2 += areaInter;
+
+          rb.otrosPatrulleros.add(a.patrullero);
+          rb.patrulleros.add(a.patrullero);
+          rb.otrasZonas.add(a.id_zona);
+          rb.areaCompartidaM2 += areaInter;
+
+          inter.properties = {
+            id_zona_a: a.id_zona,
+            id_zona_b: b.id_zona,
+            patrullero_a: a.patrullero,
+            patrullero_b: b.patrullero,
+            area_overlap_m2: Math.round(areaInter * 100) / 100,
+            pct_sobre_zona_menor: Math.round(pctMenor * 10000) / 100
+          };
+
+          intersecciones.push({
+            feature: inter,
+            zonaA: a,
+            zonaB: b,
+            area_m2: areaInter,
+            pctMenor
+          });
+        }
+      }
+
+      return { resumen, intersecciones };
+    }
+
+    function bboxSeCruza(a, b) {
+      const bboxA = obtenerBboxZona(a);
+      const bboxB = obtenerBboxZona(b);
+
+      return !(
+        bboxA.maxLon < bboxB.minLon ||
+        bboxA.minLon > bboxB.maxLon ||
+        bboxA.maxLat < bboxB.minLat ||
+        bboxA.minLat > bboxB.maxLat
+      );
+    }
+
+    function obtenerBboxZona(z) {
+      const camposValidos = [z.bbox_min_lat, z.bbox_min_lon, z.bbox_max_lat, z.bbox_max_lon]
+        .every(v => Number.isFinite(v));
+
+      if (camposValidos) {
+        return {
+          minLat: z.bbox_min_lat,
+          minLon: z.bbox_min_lon,
+          maxLat: z.bbox_max_lat,
+          maxLon: z.bbox_max_lon
+        };
+      }
+
+      const bbox = turf.bbox(turf.feature(z.geom_geojson_obj));
+      return {
+        minLon: bbox[0],
+        minLat: bbox[1],
+        maxLon: bbox[2],
+        maxLat: bbox[3]
+      };
+    }
+
+    // =========================================================
+    // 10. RENDER REVISIÓN
+    // =========================================================
+
+    function renderRevision() {
+      zonasRevisionLayer.clearLayers();
+      coincidenciasLayer.clearLayers();
+
+      const zonas = obtenerZonasFiltradas();
+      const calculo = calcularCoincidencias(zonas);
+
+      coincidenciasActuales = calculo.intersecciones;
+      resumenCoincidenciasPorZona = calculo.resumen;
+
+      zonas.forEach(zona => {
+        const resumen = resumenCoincidenciasPorZona.get(zona.id_zona);
+        const numeroPatrulleros = Math.max(1, resumen ? resumen.patrulleros.size : 1);
+
+        const layer = L.geoJSON({
+          type: "Feature",
+          geometry: zona.geom_geojson_obj,
+          properties: {}
+        }, {
+          style: estiloPorConsenso(numeroPatrulleros)
+        });
+
+        layer.bindPopup(construirPopupZona(zona, resumen));
+        layer.addTo(zonasRevisionLayer);
+      });
+
+      if (coincidenciasVisibles) {
+        coincidenciasActuales.forEach(c => {
+          L.geoJSON(c.feature, {
+            style: {
+              color: "#E60380",
+              weight: 2,
+              fillColor: "#E60380",
+              fillOpacity: 0.40
+            }
+          })
+            .bindPopup(`
+              <strong>Área de coincidencia</strong><br>
+              ${escaparHtml(c.zonaA.patrullero)} + ${escaparHtml(c.zonaB.patrullero)}<br>
+              <strong>Área:</strong> ${formatearNumero(c.area_m2)} m²<br>
+              <strong>Sobre zona menor:</strong> ${(c.pctMenor * 100).toFixed(1)}%
+            `)
+            .addTo(coincidenciasLayer);
+        });
+      }
+
+      actualizarResumenRevision(zonas);
+      renderTablaZonas(zonas);
+      renderTablaCoincidencias(coincidenciasActuales);
+      ajustarMapaRevision(zonas);
+    }
+
+    function estiloPorConsenso(numeroPatrulleros) {
+      if (numeroPatrulleros >= 4) {
+        return { color: "#7f0000", weight: 3, fillColor: "#7f0000", fillOpacity: 0.48 };
+      }
+      if (numeroPatrulleros === 3) {
+        return { color: "#d32f2f", weight: 3, fillColor: "#d32f2f", fillOpacity: 0.40 };
+      }
+      if (numeroPatrulleros === 2) {
+        return { color: "#ff5722", weight: 3, fillColor: "#ff7043", fillOpacity: 0.33 };
+      }
+      return { color: "#c62828", weight: 2, fillColor: "#ef9a9a", fillOpacity: 0.24 };
+    }
+
+    function construirPopupZona(zona, resumen) {
+      const coincidentes = resumen ? [...resumen.otrosPatrulleros].filter(Boolean) : [];
+      const totalPatrulleros = Math.max(1, resumen ? resumen.patrulleros.size : 1);
+
+      return `
+        <strong>${escaparHtml(zona.id_zona)}</strong><br>
+        <strong>Patrullero/a:</strong> ${escaparHtml(zona.patrullero || "—")}<br>
+        <strong>Equipo:</strong> ${escaparHtml(zona.equipo || "—")}<br>
+        <strong>Turno:</strong> ${escaparHtml(zona.turno || "—")}<br>
+        <strong>Motivo:</strong> ${escaparHtml(zona.motivo || "—")}<br>
+        <strong>Área:</strong> ${formatearNumero(zona.area_m2)} m²<br>
+        <strong>Consenso:</strong> ${totalPatrulleros} patrullero(s)<br>
+        <strong>Coincide con:</strong> ${coincidentes.length ? escaparHtml(coincidentes.join(", ")) : "—"}<br>
+        ${zona.detalle_zona ? `<strong>Detalle:</strong> ${escaparHtml(zona.detalle_zona)}` : ""}
+      `;
+    }
+
+    function actualizarResumenRevision(zonas) {
+      const patrulleros = new Set(zonas.map(z => z.patrullero_clave || normalizarPersona(z.patrullero)).filter(Boolean));
+      const zonasCoincidentes = zonas.filter(z => {
+        const r = resumenCoincidenciasPorZona.get(z.id_zona);
+        return r && r.otrosPatrulleros.size > 0;
+      });
+
+      document.getElementById("resumenZonas").textContent = zonas.length;
+      document.getElementById("resumenPatrulleros").textContent = patrulleros.size;
+      document.getElementById("resumenZonasCoincidentes").textContent = zonasCoincidentes.length;
+      document.getElementById("resumenIntersecciones").textContent = coincidenciasActuales.length;
+    }
+
+    function renderTablaZonas(zonas) {
+      const tbody = document.getElementById("tablaZonasRegistradas");
+
+      if (zonas.length === 0) {
+        tbody.innerHTML = '<tr><td class="fila-vacia" colspan="9">No hay zonas para los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = zonas.map(z => {
+        const r = resumenCoincidenciasPorZona.get(z.id_zona);
+        const total = Math.max(1, r ? r.patrulleros.size : 1);
+        const otros = r ? [...r.otrosPatrulleros].filter(Boolean) : [];
+
+        return `
+          <tr>
+            <td>${escaparHtml(z.id_zona)}</td>
+            <td>${escaparHtml(formatearFecha(z.fecha_registro))}</td>
+            <td>${escaparHtml(z.patrullero)}</td>
+            <td>${escaparHtml(z.equipo)}</td>
+            <td>${escaparHtml(z.turno)}</td>
+            <td>${escaparHtml(z.motivo)}</td>
+            <td>${formatearNumero(z.area_m2)}</td>
+            <td><span class="badge-consenso">${total}</span></td>
+            <td>${otros.length ? escaparHtml(otros.join(", ")) : "—"}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderTablaCoincidencias(lista) {
+      const tbody = document.getElementById("tablaCoincidencias");
+
+      if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td class="fila-vacia" colspan="6">No se detectan coincidencias significativas con los filtros actuales.</td></tr>';
+        return;
+      }
+
+      const ordenada = [...lista].sort((a, b) => b.area_m2 - a.area_m2);
+
+      tbody.innerHTML = ordenada.map(c => `
+        <tr>
+          <td>${escaparHtml(c.zonaA.patrullero)}</td>
+          <td>${escaparHtml(c.zonaB.patrullero)}</td>
+          <td>${escaparHtml(c.zonaA.id_zona)}</td>
+          <td>${escaparHtml(c.zonaB.id_zona)}</td>
+          <td>${formatearNumero(c.area_m2)}</td>
+          <td>${(c.pctMenor * 100).toFixed(1)}%</td>
+        </tr>
+      `).join("");
+    }
+
+    function ajustarMapaRevision(zonas) {
+      setTimeout(() => {
+        mapRevision.invalidateSize();
+
+        if (zonas.length === 0) {
+          mapRevision.setView(CENTRO_MAIPU, ZOOM_MAIPU);
+          return;
+        }
+
+        const latlngs = zonas
+          .filter(z => Number.isFinite(z.centroide_lat) && Number.isFinite(z.centroide_lon))
+          .map(z => [z.centroide_lat, z.centroide_lon]);
+
+        if (latlngs.length > 0) {
+          mapRevision.fitBounds(L.latLngBounds(latlngs).pad(0.35), { maxZoom: 16 });
+        }
+      }, 150);
+    }
+
+    // =========================================================
+    // 11. EXPORTACIÓN GIS
+    // =========================================================
+
+    function descargarGeoJSONVisible() {
+      const zonas = obtenerZonasFiltradas();
+
+      if (zonas.length === 0) {
+        alert("No hay zonas visibles para exportar.");
+        return;
+      }
+
+      const features = zonas.map(z => {
+        const r = resumenCoincidenciasPorZona.get(z.id_zona);
+        const otros = r ? [...r.otrosPatrulleros].filter(Boolean) : [];
+
+        return {
+          type: "Feature",
+          geometry: z.geom_geojson_obj,
+          properties: {
+            id_zona: z.id_zona,
+            id_respuesta: z.id_respuesta,
+            fecha_registro: z.fecha_registro,
+            entrevistador: z.entrevistador,
+            patrullero: z.patrullero,
+            equipo: z.equipo,
+            turno: z.turno,
+            motivo: z.motivo,
+            detalle_zona: z.detalle_zona,
+            area_m2: z.area_m2,
+            patrulleros_consenso: Math.max(1, r ? r.patrulleros.size : 1),
+            coincide_con: otros.join(" | "),
+            numero_intersecciones: r ? r.otrasZonas.size : 0,
+            area_compartida_m2: r ? Math.round(r.areaCompartidaM2 * 100) / 100 : 0
+          }
+        };
+      });
+
+      const fc = {
+        type: "FeatureCollection",
+        name: "Zonas_Rojas_Patrullaje_Maipu",
+        features
+      };
+
+      descargarBlob(
+        JSON.stringify(fc, null, 2),
+        `zonas_rojas_maipu_${fechaArchivo()}.geojson`,
+        "application/geo+json;charset=utf-8"
+      );
+    }
+
+    function descargarBlob(contenido, nombreArchivo, mime) {
+      const blob = new Blob([contenido], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreArchivo;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // =========================================================
+    // 12. BÚSQUEDA DE DIRECCIONES
+    // =========================================================
+
+    async function buscarDireccion(inputId, map, tipoMapa) {
+      const input = document.getElementById(inputId);
+      const texto = input.value.trim();
+
+      if (!texto) {
+        alert("Ingrese una dirección o intersección para buscar.");
+        return;
+      }
+
+      const query = `${texto}, Maipú, Región Metropolitana, Chile`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cl&q=${encodeURIComponent(query)}`;
+
+      try {
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        const data = await res.json();
+
+        if (!data.length) {
+          alert("No se encontró la dirección. Intente con calle, intersección o referencia más específica.");
+          return;
+        }
+
+        const latlng = [Number(data[0].lat), Number(data[0].lon)];
+        map.setView(latlng, 17);
+
+        if (tipoMapa === "registro") {
+          if (markerBusquedaRegistro) map.removeLayer(markerBusquedaRegistro);
+          markerBusquedaRegistro = L.marker(latlng)
+            .addTo(map)
+            .bindPopup(`Resultado de búsqueda:<br>${escaparHtml(data[0].display_name)}`)
+            .openPopup();
+        } else {
+          if (markerBusquedaRevision) map.removeLayer(markerBusquedaRevision);
+          markerBusquedaRevision = L.marker(latlng)
+            .addTo(map)
+            .bindPopup(`Resultado de búsqueda:<br>${escaparHtml(data[0].display_name)}`)
+            .openPopup();
+        }
+      } catch (error) {
+        alert("No se pudo realizar la búsqueda de dirección.");
+      }
+    }
+
+    // =========================================================
+    // 13. UTILIDADES
+    // =========================================================
+
+    function llenarSelect(select, valores, placeholder) {
+      const valorActual = select.value;
+      select.innerHTML = `<option value="">${escaparHtml(placeholder)}</option>`;
+
+      valores.filter(Boolean).forEach(valor => {
+        const option = document.createElement("option");
+        option.value = valor;
+        option.textContent = valor;
+        select.appendChild(option);
+      });
+
+      if ([...select.options].some(o => o.value === valorActual)) {
+        select.value = valorActual;
+      }
+    }
+
+    function unicos(lista) {
+      return [...new Set(lista.filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+    }
+
+    function parseNumero(valor) {
+      if (valor === null || valor === undefined || valor === "") return null;
+      if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+
+      let texto = String(valor).trim().replace(/\s/g, "");
+
+      // Formato chileno: 1.234,56 -> 1234.56
+      if (texto.includes(",") && texto.includes(".")) {
+        if (texto.lastIndexOf(",") > texto.lastIndexOf(".")) {
+          texto = texto.replace(/\./g, "").replace(",", ".");
+        } else {
+          // Formato anglosajón: 1,234.56 -> 1234.56
+          texto = texto.replace(/,/g, "");
+        }
+      } else if (texto.includes(",")) {
+        texto = texto.replace(",", ".");
+      }
+
+      const n = Number(texto);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function normalizarPersona(valor) {
+      return String(valor || "")
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function generarIdLocal() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return `local-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    }
+
+    function generarIdRespuestaCliente() {
+      const ahora = new Date();
+      const p = n => String(n).padStart(2, "0");
+      const fecha = `${ahora.getFullYear()}${p(ahora.getMonth() + 1)}${p(ahora.getDate())}-${p(ahora.getHours())}${p(ahora.getMinutes())}${p(ahora.getSeconds())}`;
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      return `ZR-${fecha}-${rand}`;
+    }
+
+    function formatearNumero(valor) {
+      const n = Number(valor);
+      if (!Number.isFinite(n)) return "0";
+      return n.toLocaleString("es-CL", { maximumFractionDigits: 1 });
+    }
+
+    function formatearFecha(valor) {
+      if (!valor) return "";
+      const d = new Date(valor);
+      if (Number.isNaN(d.getTime())) return String(valor);
+      return d.toLocaleString("es-CL");
+    }
+
+    function fechaArchivo() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
+
+    function mostrarEstado(elemento, tipo, mensaje) {
+      elemento.className = `estado ${tipo}`;
+      elemento.textContent = mensaje;
+    }
+
+    function abrirModal() {
+      document.getElementById("modalGuardando").classList.add("activo");
+    }
+
+    function cerrarModal() {
+      document.getElementById("modalGuardando").classList.remove("activo");
+    }
+
+    function esperar(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function escaparHtml(valor) {
+      return String(valor === null || valor === undefined ? "" : valor)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escaparHtmlAtributo(valor) {
+      return escaparHtml(valor);
+    }
+
+    // =========================================================
+    // 14. EVENTOS DE INTERFAZ
+    // =========================================================
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+
+        setTimeout(() => {
+          mapRegistro.invalidateSize();
+          mapRevision.invalidateSize();
+          if (btn.dataset.tab === "revisar") renderRevision();
+        }, 150);
+      });
+    });
+
+    document.getElementById("btnLimpiarZonas").addEventListener("click", () => limpiarZonasPendientes(true));
+    document.getElementById("btnGuardarRespuesta").addEventListener("click", guardarRespuesta);
+    document.getElementById("btnNuevaRespuesta").addEventListener("click", nuevaRespuesta);
+
+    document.getElementById("btnCentrarRegistro").addEventListener("click", () => {
+      mapRegistro.setView(CENTRO_MAIPU, ZOOM_MAIPU);
+    });
+
+    document.getElementById("btnCentrarRevision").addEventListener("click", () => {
+      mapRevision.setView(CENTRO_MAIPU, ZOOM_MAIPU);
+    });
+
+    document.getElementById("btnBuscarRegistro").addEventListener("click", () => {
+      buscarDireccion("direccionRegistro", mapRegistro, "registro");
+    });
+
+    document.getElementById("btnBuscarRevision").addEventListener("click", () => {
+      buscarDireccion("direccionRevision", mapRevision, "revision");
+    });
+
+    document.getElementById("direccionRegistro").addEventListener("keydown", e => {
+      if (e.key === "Enter") buscarDireccion("direccionRegistro", mapRegistro, "registro");
+    });
+
+    document.getElementById("direccionRevision").addEventListener("keydown", e => {
+      if (e.key === "Enter") buscarDireccion("direccionRevision", mapRevision, "revision");
+    });
+
+    [filtroPatrulleroEl, filtroEquipoEl, filtroTurnoEl, filtroMotivoEl].forEach(el => {
+      el.addEventListener("change", renderRevision);
+    });
+
+    document.getElementById("btnActualizarRevision").addEventListener("click", async () => {
+      await cargarZonasRegistradas();
+      inicializarFiltrosRevision();
+      renderRevision();
+    });
+
+    document.getElementById("btnToggleCoincidencias").addEventListener("click", event => {
+      coincidenciasVisibles = !coincidenciasVisibles;
+      event.currentTarget.textContent = coincidenciasVisibles ? "Ocultar coincidencias" : "Mostrar coincidencias";
+      renderRevision();
+    });
+
+    document.getElementById("btnDescargarGeoJSON").addEventListener("click", descargarGeoJSONVisible);
+
+    iniciarApp();
+  </script>
+</body>
+</html>
